@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeepSeek Harness 局域网部署包</title>
+<meta name="description" content="一键部署 DeepSeek Harness (dsh)，HTTPS 反向代理对局域网开放，附统一管理台与全功能解锁补丁。">
+<style>
+  :root{
+    --bg:#0b1020; --panel:#121a30; --line:#22304f; --text:#e7ecf5; --muted:#93a1ba;
+    --blue:#4d8dff; --green:#3ecf8e; --warn:#ffb454;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;line-height:1.7}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:980px;margin:0 auto;padding:0 24px}
+  header{border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(11,16,32,.85);backdrop-filter:blur(8px);z-index:10}
+  header .wrap{display:flex;align-items:center;justify-content:space-between;height:60px}
+  .logo{font-weight:700;font-size:17px;display:flex;gap:8px;align-items:center}
+  .logo span{color:var(--blue)}
+  nav{display:flex;gap:20px;font-size:14px}
+  .hero{padding:72px 0 48px;text-align:center;background:radial-gradient(600px 300px at 50% -50px,#1b2c55,transparent)}
+  h1{font-size:38px;line-height:1.25;margin-bottom:14px}
+  h1 em{font-style:normal;color:var(--blue)}
+  .sub{color:var(--muted);font-size:17px;max-width:640px;margin:0 auto 28px}
+  .btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+  .btn{padding:11px 26px;border-radius:8px;font-size:15px;border:1px solid var(--line);transition:.2s}
+  .btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+  .btn.primary:hover{filter:brightness(1.12);text-decoration:none}
+  .btn:hover{border-color:var(--blue);text-decoration:none}
+  .warn{max-width:860px;margin:34px auto 0;text-align:left;background:#241a0e;border:1px solid #5c4423;border-radius:10px;padding:14px 18px;font-size:14px;color:var(--warn)}
+  section{padding:56px 0}
+  h2{font-size:26px;margin-bottom:26px;text-align:center}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px}
+  .card b{display:block;margin-bottom:8px;font-size:16px}
+  .card p{color:var(--muted);font-size:14px}
+  .term{background:#0a0f1d;border:1px solid var(--line);border-radius:12px;overflow:hidden;max-width:720px;margin:0 auto}
+  .term-bar{background:var(--panel);padding:9px 14px;font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .dot{width:11px;height:11px;border-radius:50%}
+  .term pre{padding:18px 20px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px;color:#cfe3ff;overflow-x:auto}
+  .term .c{color:#5b6b8c}
+  .arch{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:#9fc2ff;white-space:pre;overflow-x:auto}
+  details{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 18px;margin-bottom:10px}
+  summary{cursor:pointer;font-weight:600}
+  details p{color:var(--muted);font-size:14px;margin-top:8px}
+  footer{border-top:1px solid var(--line);padding:26px 0;color:var(--muted);font-size:13px;text-align:center}
+  @media(max-width:640px){h1{font-size:28px}nav{display:none}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="logo">⚡ DeepSeek <span>Harness 部署包</span></div>
+    <nav><a href="#features">特性</a><a href="#quickstart">快速开始</a><a href="#arch">架构</a><a href="#faq">FAQ</a><a href="https://github.com/gavinlee9051/deepseek-harness-pack">GitHub ↗</a></nav>
+  </div>
+</header>
+
+<div class="hero wrap">
+  <h1>把 DeepSeek Harness 部署到<em>局域网</em>，<br>一条命令搞定</h1>
+  <p class="sub">dsh 官方只允许本机访问？这个部署包用 HTTPS 反向代理安全地把它开放给局域网，附带管理台、开机自启与升级自动补丁。</p>
+  <div class="btns">
+    <a class="btn primary" href="https://github.com/gavinlee9051/deepseek-harness-pack#快速开始">立即使用</a>
+    <a class="btn" href="https://github.com/gavinlee9051/deepseek-harness-pack">查看源码</a>
+  </div>
+  <div class="warn">⚠️ 安全提示：部署后局域网内任何设备都能使用本机 agent（含命令执行）与设置/凭据功能。请只在可信网络使用。</div>
+</div>
+
+<section id="features">
+  <div class="wrap">
+    <h2>特性</h2>
+    <div class="grid">
+      <div class="card"><b>🚀 一键安装</b><p>自动处理 nvm / Node.js / dsh 安装与环境配置，clone 后一条命令完成部署。</p></div>
+      <div class="card"><b>🌐 局域网可访问</b><p>HTTPS 反向代理对外服务，自签名证书随 IP 变化自动重签。</p></div>
+      <div class="card"><b>🔓 完整功能解锁</b><p>解除 dsh 对远程浏览器的 loopback 限制：设置、Agent 预设、凭据管理局域网可用。</p></div>
+      <div class="card"><b>🎛️ 统一管理台</b><p>交互式菜单 + 子命令：启动 / 停止 / 重启 / 状态 / 日志 / 升级。</p></div>
+      <div class="card"><b>🔁 升级无忧</b><p>dsh 升级覆盖补丁后，每次启动自动重新应用；证书自动续期。</p></div>
+      <div class="card"><b>⚙️ 开机自启</b><p>桌面登录自启动与 systemd 用户服务两种模式，按需选择。</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="quickstart" style="background:var(--panel);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+  <div class="wrap">
+    <h2>快速开始</h2>
+    <div class="term">
+      <div class="term-bar"><span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span>&nbsp;bash</div>
+      <pre><span class="c"># 克隆并安装（需要 Linux + 可访问外网）</span>
+git clone https://github.com/gavinlee9051/deepseek-harness-pack.git
+cd deepseek-harness-pack
+bash install.sh
+
+<span class="c"># 安装完成后访问</span>
+<span style="color:var(--green)">https://127.0.0.1:3080</span>        <span class="c"># 本机</span>
+<span style="color:var(--green)">https://&lt;局域网IP&gt;:3080</span>     <span class="c"># 其他设备</span></pre>
+    </div>
+  </div>
+</section>
+
+<section id="arch">
+  <div class="wrap">
+    <h2>架构</h2>
+<div class="arch">浏览器(任意设备)
+   │  https://&lt;LAN-IP&gt;:3080
+   ▼
+proxy.js ── HTTPS 反向代理 (0.0.0.0:3080，自签名证书)
+   │  改写 Host / Origin / Referer → 通过 dsh 浏览器信任围栏
+   ▼
+dsh web ── 官方原版服务 (仅监听 127.0.0.1:3081)</div>
+    <p style="color:var(--muted);font-size:14px;margin-top:14px">为什么这么绕？README 里完整记录了 dsh 的三层安全机制（禁止绑定 0.0.0.0、浏览器信任围栏、设置面 loopback-only）及对应解法。</p>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <h2>常见问题</h2>
+    <details><summary>首次打开提示证书不安全？</summary><p>自签名证书所致，浏览器中信任即可；局域网 IP 变化后会在下次启动时自动重签。</p></details>
+    <details><summary>页面报 crypto.randomUUID 错误？</summary><p>说明你用了 http:// 访问。WebCrypto 只在安全上下文可用，请改用 https:// 地址。</p></details>
+    <details><summary>升级 dsh 后补丁会丢吗？</summary><p>不会。每次启动都会自动检测并重新应用补丁；若新版代码结构变化导致失败会明确提示。</p></details>
+    <details><summary>如何彻底还原官方行为？</summary><p>恢复备份文件 client.js.orig 并重启，或直接卸载重装 dsh，详见仓库 README。</p></details>
+  </div>
+</section>
+
+<footer>
+  MIT License · 由 <a href="https://github.com/gavinlee9051">gavinlee9051</a> 维护 · 基于 <a href="https://github.com/deepseek-ai/deepseek-harness">DeepSeek Harness</a>
+</footer>
+
+</body>
+</html>
