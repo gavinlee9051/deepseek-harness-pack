@@ -1,5 +1,7 @@
 # DeepSeek Harness 局域网部署包
 
+**中文** | [English](README.en.md)
+
 将 [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) 的 Web UI 部署为本机服务，并通过 HTTPS 反向代理对**局域网**开放，附带一键启停/升级/补丁管理。
 
 > ⚠️ **安全须知**：本方案会解除 dsh 对远程浏览器的功能限制（见下文“设计背景”）。
