@@ -26,6 +26,9 @@ fi
 echo "[run] applying LAN feature patch..."
 "$SCRIPT_DIR/patch-lan.sh" || echo "[run] WARNING: LAN patch failed, continuing"
 
+echo "[run] applying archive feature patch..."
+"$SCRIPT_DIR/patch-archive.sh" || echo "[run] WARNING: archive patch failed, continuing"
+
 echo "[run] starting dsh web on 127.0.0.1:${DSH_PORT} ..."
 dsh web \
   --host 127.0.0.1 \

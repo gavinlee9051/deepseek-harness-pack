@@ -19,8 +19,9 @@
 
 - 局域网可访问：HTTPS 反向代理（自签名证书，随 IP 变化自动重签）
 - 解锁完整功能：设置 / Agent 预设 / 凭据管理在局域网浏览器可用（补丁，可还原）
+- 会话归档（归档/恢复/删除会话）：与解锁补丁一同自动应用（`patches/archive-core-rc2.mjs`，源自 gavinlee9051/dsh-modern-skin）
 - 统一管理台：交互菜单 + 子命令（启动/停止/重启/状态/日志/升级）
-- 升级无忧：dsh 升级覆盖补丁后，每次启动自动重新应用
+- 升级无忧：dsh 升级覆盖补丁后，每次启动自动重新应用（版本不匹配时归档补丁自动跳过并提示）
 - Linux 版额外支持：自动安装 Node.js/nvm、桌面登录自启 + systemd 用户服务二选一
 
 ## 快速开始
@@ -84,6 +85,8 @@ dsh-manage.cmd log           实时日志（Ctrl+C 退出）
 | `run.sh` | 前台启动（供 systemd 调用） |
 | `upgrade.sh` | 升级 dsh 并自动重启、重打补丁 |
 | `patch-lan.sh` | 局域网功能解锁补丁（幂等） |
+| `patch-archive.sh` | 会话归档功能补丁（幂等，自动应用） |
+| `patches/` | 核心补丁定义（`archive-core-rc2.mjs` 等） |
 | `gen-cert.sh` | 自签名证书生成/更新 |
 | `uninstall.sh` | 停止并移除自启动注册 |
 
@@ -134,6 +137,19 @@ dsh web (HTTP, 仅监听 127.0.0.1:3081)
    → 修改客户端下发文件中的 `isLoopback` 判定（原文件备份为 `.orig`，
      还原后重启即可）。配合代理的地址改写即可全功能使用。
    平台差异：Linux 用 `patch-lan.sh`；Windows 由 `win/dsh.ps1` 启动时自动应用。
+
+### 会话归档功能
+
+本仓库合并了来自 [dsh-modern-skin](https://github.com/gavinlee9051/dsh-modern-skin) 的
+**归档会话**核心功能（仅核心，不含皮肤样式）：在 dsh 侧边栏新增「已归档」分区，
+会话可归档 / 恢复 / 删除。实现为对 dsh 核心若干包的编译产物做锚点替换
+（`patches/archive-core-rc2.mjs`），Linux 由 `patch-archive.sh`、Windows 由
+`win/dsh.ps1` 在**每次启动**时幂等应用（含升级后自动重打）。
+
+- **版本绑定**：补丁针对 `dsh 0.1.1-rc.2` 验证；`status` 会显示「归档补丁」状态。
+  当 dsh 升级到其它版本时启动脚本会**自动跳过**并提示（避免误改不兼容的代码），
+  直到该补丁随新版本锚点更新。
+- **还原**：`npm install -g @deepseek-ai/dsh` 后重启即可回到官方原版。
 
 ## 常见问题
 

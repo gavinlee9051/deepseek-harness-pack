@@ -33,6 +33,9 @@ do_status() {
   PATCH_TARGET="$(dirname "$(dirname "$NODE_REAL")")/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-connection/lib/client.js"
   grep -q 'isLoopback: true,' "$PATCH_TARGET" 2>/dev/null \
     && echo "LAN 补丁: 已应用" || echo "LAN 补丁: 未应用"
+  ARCHIVE_ROOT="$(npm root -g 2>/dev/null)/@deepseek-ai/dsh/node_modules/@deepseek-ai"
+  grep -qF 'Permanently delete one session' "$ARCHIVE_ROOT/dsh-workspace/lib/index.js" 2>/dev/null \
+    && echo "归档补丁: 已应用" || echo "归档补丁: 未应用"
 }
 
 do_log()      { echo "(Ctrl+C 退出)"; tail -n 50 -f "$LOG"; }

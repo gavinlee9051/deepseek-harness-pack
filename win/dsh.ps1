@@ -1,4 +1,4 @@
-# dsh.ps1 - DeepSeek Harness management console (Windows)
+﻿# dsh.ps1 - DeepSeek Harness management console (Windows)
 # Port of gavinlee9051/deepseek-harness-pack to Windows PowerShell.
 # Usage:
 #   powershell -ExecutionPolicy Bypass -File dsh.ps1
@@ -31,6 +31,19 @@ $GlobalRoot = & npm root -g 2>$null
 $DshBin = Join-Path $GlobalRoot '@deepseek-ai\dsh\lib\bin.js'
 $PatchTarget = Join-Path $GlobalRoot '@deepseek-ai\dsh\node_modules\@deepseek-ai\dsh-client-connection\lib\client.js'
 $ProxyJs = Join-Path $DeployDir 'proxy.js'
+
+# Archive session feature (merged from gavinlee9051/dsh-modern-skin).
+# The patch edits installed dsh core files, so it is version-pinned: it only
+# runs against the exact dsh release its anchors were validated on. Find the
+# patch either beside this script (<deploy>/patches) or in the repo layout
+# (<repo-root>/patches) so both a standalone deploy and the win/ folder work.
+$ArchiveRoot = Join-Path $GlobalRoot '@deepseek-ai\dsh\node_modules\@deepseek-ai'
+$ArchiveMarker = 'Permanently delete one session'
+$ArchiveSupportedVersion = '0.1.1-rc.2'
+$ArchivePatchScript = @(
+        (Join-Path $DeployDir 'patches\archive-core-rc2.mjs'),
+        (Join-Path (Split-Path $DeployDir -Parent) 'patches\archive-core-rc2.mjs')
+    ) | Where-Object { Test-Path $_ } | Select-Object -First 1
 
 function Get-LanIp {
     try {
@@ -74,16 +87,50 @@ function Write-Status([string]$Msg) { Write-Host "[dsh] $Msg" }
 
 function Apply-LanPatch {
     if (-not (Test-Path $PatchTarget)) { Write-Host "[patch] target not found: $PatchTarget"; return $false }
-    $s = Get-Content -Raw $PatchTarget
-    if ($s -like '*dsh-lan-patch*') { Write-Host '[patch] already applied'; return $true }
+    $utf8 = New-Object System.Text.UTF8Encoding($false)
+    $s = [System.IO.File]::ReadAllText($PatchTarget, $utf8)
+    if ($s.Contains('dsh-lan-patch')) { Write-Host '[patch] already applied'; return $true }
     $from = 'isLoopback: pageLocation === void 0 || isLoopbackHostname(pageLocation.hostname),'
     $to = 'isLoopback: true, /*[dsh-lan-patch]*/'
     if (-not $s.Contains($from)) { Write-Host '[patch] FAILED: expected code not found (dsh layout changed?)'; return $false }
     if (-not (Test-Path "$PatchTarget.orig")) { Copy-Item $PatchTarget "$PatchTarget.orig" }
     $s = $s.Replace($from, $to)
-    [System.IO.File]::WriteAllText($PatchTarget, $s, (New-Object System.Text.UTF8Encoding($false)))
+    [System.IO.File]::WriteAllText($PatchTarget, $s, $utf8)
     Write-Host "[patch] applied: $PatchTarget"
     return $true
+}
+
+function Apply-ArchivePatch {
+    if (-not $ArchivePatchScript) {
+        Write-Host '[archive] patch script not found (expected patches\archive-core-rc2.mjs next to this script or in the repo root)'
+        return $false
+    }
+    $ws = Join-Path $ArchiveRoot 'dsh-workspace\lib\index.js'
+    if (-not (Test-Path $ws)) {
+        Write-Host "[archive] dsh workspace not found: $ws"
+        Write-Host '[archive] run the installer first (install.ps1)'
+        return $false
+    }
+    $ver = (& dsh --version 2>$null)
+    if (($ver | Out-String).Trim() -ne $ArchiveSupportedVersion) {
+        Write-Host "[archive] skipped: dsh '$((($ver | Out-String).Trim()))' does not match supported '$ArchiveSupportedVersion'"
+        return $false
+    }
+    $utf8 = New-Object System.Text.UTF8Encoding($false)
+    if ([System.IO.File]::ReadAllText($ws, $utf8).Contains($ArchiveMarker)) {
+        Write-Host '[archive] already applied'
+        return $true
+    }
+    Write-Host "[archive] applying archive session feature to dsh $($ArchiveSupportedVersion) ..."
+    & $Node $ArchivePatchScript --root $ArchiveRoot
+    $ok = ($LASTEXITCODE -eq 0)
+    if ($ok) {
+        Write-Host '[archive] applied'
+    } else {
+        Write-Host '[archive] WARNING: apply reported a failure (dsh layout changed?)'
+        Write-Host '[archive]          reinstall dsh, then start again to retry'
+    }
+    return $ok
 }
 
 function Ensure-Cert {
@@ -133,6 +180,7 @@ function Stop-Dsh {
 function Start-Dsh {
     Stop-Dsh
     Apply-LanPatch | Out-Null
+    Apply-ArchivePatch | Out-Null
     Ensure-Cert
 
     $lan = Get-LanIp
@@ -179,8 +227,13 @@ function Show-Status {
     Write-Host ''
     Write-Host '=== version / patch ==='
     & dsh --version 2>$null
-    $s = Get-Content -Raw $PatchTarget -ErrorAction SilentlyContinue
+    $s = [System.IO.File]::ReadAllText($PatchTarget, (New-Object System.Text.UTF8Encoding($false)))
     if ($s -and $s -like '*dsh-lan-patch*') { Write-Host 'LAN patch: applied' } else { Write-Host 'LAN patch: NOT applied' }
+    $wsFile = Join-Path $ArchiveRoot 'dsh-workspace\lib\index.js'
+    if (Test-Path $wsFile) {
+        $wss = [System.IO.File]::ReadAllText($wsFile, (New-Object System.Text.UTF8Encoding($false)))
+        if ($wss.Contains($ArchiveMarker)) { Write-Host 'archive patch: applied' } else { Write-Host 'archive patch: NOT applied' }
+    } else { Write-Host 'archive patch: dsh workspace not found' }
 }
 
 function Show-Log {
@@ -195,7 +248,7 @@ function Do-Upgrade {
     & npm install -g --allow-scripts=@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs @deepseek-ai/dsh
     Write-Host '=== upgraded version ==='
     & dsh --version
-    Write-Host '=== restarting (LAN patch reapplied on start) ==='
+    Write-Host '=== restarting (LAN + archive patches reapplied on start) ==='
     Stop-Dsh
     Start-Sleep -Seconds 1
     Start-Dsh
