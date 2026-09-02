@@ -4,9 +4,11 @@
 
 将 [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) 的 Web UI 部署为本机服务，并通过 HTTPS 反向代理对**局域网**开放，附带一键启停/升级/补丁管理。
 
-> ⚠️ **安全须知**：本方案会解除 dsh 对远程浏览器的功能限制（见下文“设计背景”）。
+> ⚠️ **安全须知**：本方案会解除 dsh 对远程浏览器的功能限制（见下文"设计背景"）。
 > 部署后局域网内**任何设备**都可以使用本机的 agent 能力（含命令执行）、读取/修改设置与凭据状态。
 > 请**只在可信网络使用**。生产环境请等待 dsh 官方认证层，或仅通过 SSH 隧道访问。
+
+> **Windows 用户**：本仓库根目录为 Linux（bash/systemd）方案；Windows 版（PowerShell）见 [win/](win/README.md)。
 
 ## 功能特性
 

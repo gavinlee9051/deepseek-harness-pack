@@ -6,3 +6,7 @@ dsh.log
 start.out
 cert/
 *.orig
+
+# windows (win/) runtime artifacts
+win/logs/
+*.pid
