@@ -2,7 +2,14 @@
 
 [中文](README.md) | **English**
 
-Deploy [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness)'s Web UI as a local service and expose it to your **LAN** through an HTTPS reverse proxy, with one-click start/stop/upgrade management and an unlock patch for loopback-only features.
+Deploy [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness)'s Web UI as a local service and expose it to your **LAN** through an HTTPS reverse proxy, with one-click install / start-stop / upgrade and an unlock patch for loopback-only features.
+
+This repository ships two platform variants with the same architecture and unlock mechanics:
+
+| Platform | Location | Notes |
+|---|---|---|
+| Linux / macOS (bash) | repository root | one-click install + systemd / desktop auto-start; see this page |
+| Windows (PowerShell) | [`win/`](win/README.md) | one-click install + management CLI; see [win/README.md](win/README.md) |
 
 > ⚠️ **Security notice**: this pack lifts dsh's restrictions for remote browsers (see "Design background").
 > Once deployed, **any device** on the LAN can use the host's agent capabilities (including command execution)
@@ -11,19 +18,28 @@ Deploy [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness)
 
 ## Features
 
-- One-click install: handles Node.js / nvm / dsh automatically
 - LAN accessible: HTTPS reverse proxy (self-signed cert, auto-reissued when your IP changes)
 - Full functionality over LAN: settings / agent presets / credentials usable from remote browsers (patched, reversible)
 - Unified management CLI: interactive menu + subcommands (start/stop/restart/status/log/upgrade)
-- Auto-start on login (desktop entry) plus an optional systemd --user service
 - Upgrade-proof: the LAN patch re-applies automatically on every start after dsh upgrades
+- Linux additionally: auto Node.js/nvm setup, desktop auto-start + optional systemd --user service
 
 ## Quick start
+
+### Linux / macOS
 
 ```bash
 git clone https://github.com/gavinlee9051/deepseek-harness-pack.git
 cd deepseek-harness-pack
-bash install.sh
+bash install.sh            # or: bash install.sh --no-autostart
+```
+
+### Windows
+
+```bat
+git clone https://github.com/gavinlee9051/deepseek-harness-pack.git
+cd deepseek-harness-pack\win
+powershell -ExecutionPolicy Bypass -File install.ps1
 ```
 
 When done, open the printed URLs:
@@ -31,9 +47,12 @@ When done, open the printed URLs:
 - Local: `https://127.0.0.1:3080`
 - LAN: `https://<host-LAN-IP>:3080`
 
-The first visit shows a certificate warning (self-signed); proceed past it.
+The first visit shows a certificate warning (self-signed); proceed past it. Then add a model provider
+(such as DeepSeek) and paste your API key in Settings.
 
 ## Daily usage
+
+### Linux / macOS
 
 ```bash
 ./dsh.sh            # interactive management menu
@@ -42,6 +61,22 @@ The first visit shows a certificate warning (self-signed); proceed past it.
 ./dsh.sh upgrade    # upgrade dsh, restart, re-apply patch
 ./dsh.sh log        # live logs
 ```
+
+### Windows
+
+Open a terminal in the `win` folder:
+
+```bat
+dsh-manage.cmd               interactive menu (1 start 2 stop 3 restart 4 status 5 log 6 upgrade)
+dsh-manage.cmd status        processes / URLs / version / patch state
+dsh-manage.cmd restart       restart
+dsh-manage.cmd upgrade       upgrade dsh, restart, re-apply patch
+dsh-manage.cmd log           live logs (Ctrl+C to exit)
+```
+
+## Scripts
+
+### Linux / macOS (repository root)
 
 | Script | Purpose |
 |---|---|
@@ -53,6 +88,16 @@ The first visit shows a certificate warning (self-signed); proceed past it.
 | `patch-lan.sh` | idempotent LAN-unlock patch |
 | `gen-cert.sh` | self-signed TLS cert create/renew |
 | `uninstall.sh` | stop service, remove auto-start registrations |
+
+### Windows (`win/`)
+
+| Script | Purpose |
+|---|---|
+| `win/install.ps1` | one-click deployment (checks Node -> global dsh install -> start) |
+| `win/dsh.ps1` | unified management CLI (includes patch / cert logic) |
+| `win/dsh-manage.cmd` | cmd wrapper around `dsh.ps1` |
+| `win/proxy.js` | HTTPS reverse proxy (0.0.0.0:3080 -> 127.0.0.1:3081), rewrites Host/Origin/Referer |
+| `win/uninstall.ps1` | stop service; optionally remove global package / ~/.dsh data |
 
 ## Architecture
 
@@ -91,20 +136,25 @@ Deployment runs into three layers of dsh security mechanisms; this pack solves e
    The browser bundle decides "am I local?" purely from the page URL and disables
    settings/presets/credentials for non-loopback pages; the server additionally hard-codes
    those methods as loopback-only ("until a real authentication layer exists", per source).
-   → `patch-lan.sh` flips the client-side `isLoopback` decision (original file kept as
-   `.orig`; restore with `cp client.js.orig client.js` and restart). Combined with the
-   proxy's header rewriting, full functionality works over LAN.
+   → the client-side `isLoopback` decision is flipped (original file kept as `.orig`;
+   restore and restart to revert). Combined with the proxy's header rewriting, full
+   functionality works over LAN. Platform difference: Linux uses `patch-lan.sh`;
+   Windows applies it automatically on start via `win/dsh.ps1`.
 
 ## FAQ
 
 - **Certificate warning on first visit?** Expected (self-signed); trust it. The cert is
   re-signed automatically on next start if your IP changes.
-- **Blank page or odd behavior?** Hard refresh (Ctrl+Shift+R); then check `./dsh.sh log`.
+- **Blank page or odd behavior?** Hard refresh (Ctrl+Shift+R); then check `./dsh.sh log`
+  (Windows: `dsh-manage.cmd log`).
 - **Patch lost after upgrading dsh?** It re-applies on every start. A `[patch] FAILED`
-  message means the new version changed internals — please open an issue.
-- **Firewall?** If ufw is active with deny-by-default: `sudo ufw allow 3080/tcp`.
-- **Start before login?** `systemctl --user enable --now deepseek-harness.service`
-  (headless persistence also needs `sudo loginctl enable-linger $USER`).
+  message or "patch NOT applied" in status means the new version changed internals —
+  please open an issue.
+- **Firewall (Linux)?** If ufw is active with deny-by-default: `sudo ufw allow 3080/tcp`.
+- **Firewall (Windows)?** Allow inbound TCP 3080.
+- **Start at boot?** Linux: `systemctl --user enable --now deepseek-harness.service`
+  (headless persistence also needs `sudo loginctl enable-linger $USER`); Windows: not
+  registered by default — point Task Scheduler / the Startup folder at `win\dsh.ps1 start`.
 
 ## License
 

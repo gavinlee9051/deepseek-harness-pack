@@ -2,29 +2,43 @@
 
 **中文** | [English](README.en.md)
 
-将 [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) 的 Web UI 部署为本机服务，并通过 HTTPS 反向代理对**局域网**开放，附带一键启停/升级/补丁管理。
+将 [DeepSeek Harness (dsh)](https://github.com/deepseek-ai/deepseek-harness) 的 Web UI 部署为本机服务，并通过 HTTPS 反向代理对**局域网**开放，附带一键安装 / 启停 / 升级 / 补丁管理。
 
-> ⚠️ **安全须知**：本方案会解除 dsh 对远程浏览器的功能限制（见下文"设计背景"）。
+本仓库提供两个平台的部署方案，架构与解锁原理完全相同：
+
+| 平台 | 位置 | 说明 |
+|---|---|---|
+| Linux / macOS (bash) | 仓库根目录 | 一键安装 + systemd / 桌面自启，详见 [README（本页）](#快速开始) |
+| Windows (PowerShell) | [`win/`](win/README.md) | 一键安装 + 管理台脚本，详见 [win/README.md](win/README.md) |
+
+> ⚠️ **安全须知**：本方案会解除 dsh 对远程浏览器的功能限制（见下文「设计背景」）。
 > 部署后局域网内**任何设备**都可以使用本机的 agent 能力（含命令执行）、读取/修改设置与凭据状态。
 > 请**只在可信网络使用**。生产环境请等待 dsh 官方认证层，或仅通过 SSH 隧道访问。
 
-> **Windows 用户**：本仓库根目录为 Linux（bash/systemd）方案；Windows 版（PowerShell）见 [win/](win/README.md)。
-
 ## 功能特性
 
-- 一键安装：自动处理 Node.js / nvm / dsh 安装
 - 局域网可访问：HTTPS 反向代理（自签名证书，随 IP 变化自动重签）
 - 解锁完整功能：设置 / Agent 预设 / 凭据管理在局域网浏览器可用（补丁，可还原）
 - 统一管理台：交互菜单 + 子命令（启动/停止/重启/状态/日志/升级）
-- 开机自启：桌面登录自启动 + systemd 用户服务二选一
 - 升级无忧：dsh 升级覆盖补丁后，每次启动自动重新应用
+- Linux 版额外支持：自动安装 Node.js/nvm、桌面登录自启 + systemd 用户服务二选一
 
 ## 快速开始
+
+### Linux / macOS
 
 ```bash
 git clone https://github.com/gavinlee9051/deepseek-harness-pack.git
 cd deepseek-harness-pack
-bash install.sh
+bash install.sh            # 或 bash install.sh --no-autostart
+```
+
+### Windows
+
+```bat
+git clone https://github.com/gavinlee9051/deepseek-harness-pack.git
+cd deepseek-harness-pack\win
+powershell -ExecutionPolicy Bypass -File install.ps1
 ```
 
 安装完成后按提示的地址访问：
@@ -32,9 +46,11 @@ bash install.sh
 - 本机：`https://127.0.0.1:3080`
 - 局域网：`https://<本机局域网IP>:3080`
 
-首次访问会提示证书不受信任（自签名），选择继续访问即可。
+首次访问会提示证书不受信任（自签名），选择继续访问即可。随后在页面设置中添加模型提供方（如 DeepSeek）并填入 API Key。
 
 ## 日常使用
+
+### Linux / macOS
 
 ```bash
 ./dsh.sh            # 交互式管理菜单
@@ -43,6 +59,22 @@ bash install.sh
 ./dsh.sh upgrade    # 升级 dsh 并重启
 ./dsh.sh log        # 实时日志
 ```
+
+### Windows
+
+在 `win` 目录打开终端（PowerShell 或 cmd）：
+
+```bat
+dsh-manage.cmd               交互式菜单（1启动 2停止 3重启 4状态 5日志 6升级）
+dsh-manage.cmd status        进程 / 地址 / 版本 / 补丁状态
+dsh-manage.cmd restart       重启
+dsh-manage.cmd upgrade       升级 dsh 并自动重启、重打补丁
+dsh-manage.cmd log           实时日志（Ctrl+C 退出）
+```
+
+## 脚本说明
+
+### Linux / macOS（仓库根目录）
 
 | 脚本 | 作用 |
 |---|---|
@@ -54,6 +86,16 @@ bash install.sh
 | `patch-lan.sh` | 局域网功能解锁补丁（幂等） |
 | `gen-cert.sh` | 自签名证书生成/更新 |
 | `uninstall.sh` | 停止并移除自启动注册 |
+
+### Windows（`win/`）
+
+| 脚本 | 作用 |
+|---|---|
+| `win/install.ps1` | 一键安装部署（检查 Node → 全局装 dsh → 启动） |
+| `win/dsh.ps1` | 统一管理入口（内含打补丁 / 建证书逻辑） |
+| `win/dsh-manage.cmd` | `dsh.ps1` 的 cmd 包装 |
+| `win/proxy.js` | HTTPS 反向代理（0.0.0.0:3080 → 127.0.0.1:3081），改写 Host/Origin/Referer |
+| `win/uninstall.ps1` | 停止服务，可选卸载全局包 / 删除 ~/.dsh 数据 |
 
 ## 架构
 
@@ -83,24 +125,25 @@ dsh web (HTTP, 仅监听 127.0.0.1:3081)
      → 代理统一改写 `Host` / `Origin` / `Referer` 为内部地址。
    - `crypto.randomUUID()` 等 WebCrypto API 仅存在于安全上下文（HTTPS 或 localhost），
      明文 HTTP 访问局域网 IP 时前端会报
-     “加载提供方目录失败: crypto.randomUUID is not a function”。
+     "加载提供方目录失败: crypto.randomUUID is not a function"。
      → 代理提供 HTTPS（自签名证书）。
 
 3. **设置面仅限 loopback（产品行为）**
    浏览器端用页面 URL 判断是否本机，非 loopback 直接禁用设置/预设/凭据；
-   服务端也把这些方法硬编码为 loopback-only（注释称“直到存在真正的认证层”）。
-   → `patch-lan.sh` 修改客户端下发文件中的 `isLoopback` 判定（原文件备份为 `.orig`，
-     还原：`cp client.js.orig client.js` 后重启）。配合代理的地址改写即可全功能使用。
+   服务端也把这些方法硬编码为 loopback-only（注释称"直到存在真正的认证层"）。
+   → 修改客户端下发文件中的 `isLoopback` 判定（原文件备份为 `.orig`，
+     还原后重启即可）。配合代理的地址改写即可全功能使用。
+   平台差异：Linux 用 `patch-lan.sh`；Windows 由 `win/dsh.ps1` 启动时自动应用。
 
 ## 常见问题
 
 - **首次打开提示证书不安全？** 自签名所致，信任即可；IP 变化后下次启动自动重签。
-- **页面白屏或行为异常？** 强制刷新（Ctrl+Shift+R）；仍异常看 `./dsh.sh log`。
-- **升级后补丁失效？** 每次启动会自动重打；若日志出现 `[patch] FAILED` 说明新版代码结构变了，欢迎提 issue。
-- **防火墙？** 若 ufw 激活且默认拒入站：`sudo ufw allow 3080/tcp`。
-- **想开机无需登录就启动？** `systemctl --user enable --now deepseek-harness.service`
-  （未登录常驻需 `sudo loginctl enable-linger $USER`）。
+- **页面白屏或行为异常？** 强制刷新（Ctrl+Shift+R）；仍异常看 `./dsh.sh log`（Windows：`dsh-manage.cmd log`）。
+- **升级后补丁失效？** 每次启动会自动重打；若日志出现 `[patch] FAILED` / 状态显示补丁未应用，说明新版代码结构变了，欢迎提 issue。
+- **防火墙（Linux）？** 若 ufw 激活且默认拒入站：`sudo ufw allow 3080/tcp`。
+- **防火墙（Windows）？** 放行 TCP 3080 入站。
+- **开机自启？** Linux：`systemctl --user enable --now deepseek-harness.service`（未登录常驻需 `sudo loginctl enable-linger $USER`）；Windows：默认不注册，用任务计划程序 / 启动目录指向 `win\dsh.ps1 start`。
 
 ## License
 
-MIT。dsh 本身为 [DeepSeek AI](https://github.com/deepseek-ai/deepseek-harness) 的 MIT 项目，本包仅是部署辅助脚本。
+MIT。dsh 本身为 [DeepSeek AI](https://github.com/deepseek-ai/deepseek-harness) 的 MIT 项目，本仓库仅含部署辅助脚本。
