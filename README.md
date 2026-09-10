@@ -153,6 +153,7 @@ dsh web (HTTP, 仅监听 127.0.0.1:3081)
 
 ## 常见问题
 
+- **提示 `dsh web authentication required`？** dsh 0.1.5+ 需要一次性登录 token。启动脚本已自动从日志提取并打印带 token 的地址（形如 `https://127.0.0.1:3080/?token=...`），打开一次即可（会写入 cookie）；token 每次启动会轮换，`status` 也会显示当前 token 地址。
 - **首次打开提示证书不安全？** 自签名所致，信任即可；IP 变化后下次启动自动重签。
 - **页面白屏或行为异常？** 强制刷新（Ctrl+Shift+R）；仍异常看 `./dsh.sh log`（Windows：`dsh-manage.cmd log`）。
 - **升级后补丁失效？** 每次启动会自动重打；若日志出现 `[patch] FAILED` / 状态显示补丁未应用，说明新版代码结构变了，欢迎提 issue。

@@ -90,14 +90,33 @@ function Apply-LanPatch {
     $utf8 = New-Object System.Text.UTF8Encoding($false)
     $s = [System.IO.File]::ReadAllText($PatchTarget, $utf8)
     if ($s.Contains('dsh-lan-patch')) { Write-Host '[patch] already applied'; return $true }
-    $from = 'isLoopback: pageLocation === void 0 || isLoopbackHostname(pageLocation.hostname),'
-    $to = 'isLoopback: true, /*[dsh-lan-patch]*/'
-    if (-not $s.Contains($from)) { Write-Host '[patch] FAILED: expected code not found (dsh layout changed?)'; return $false }
+    # The isLoopback expression changed across dsh releases (0.1.1: pageLocation
+    # === void 0 || ...; 0.1.5: transport?.ownsHost === true || pageLocation ===
+    # void 0 || ...). Match the whole expression up to isLoopbackHostname(...).
+    if (-not $s.Contains('isLoopbackHostname(pageLocation.hostname),')) {
+        Write-Host '[patch] FAILED: expected code not found (dsh layout changed?)'
+        return $false
+    }
     if (-not (Test-Path "$PatchTarget.orig")) { Copy-Item $PatchTarget "$PatchTarget.orig" }
-    $s = $s.Replace($from, $to)
-    [System.IO.File]::WriteAllText($PatchTarget, $s, $utf8)
+    $re = [regex]'isLoopback:[^\r\n]*?isLoopbackHostname\(pageLocation\.hostname\),'
+    $patched = $re.Replace($s, 'isLoopback: true, /*[dsh-lan-patch]*/', 1)
+    if ($patched -eq $s) { Write-Host '[patch] FAILED: substitution did not take effect'; return $false }
+    [System.IO.File]::WriteAllText($PatchTarget, $patched, $utf8)
     Write-Host "[patch] applied: $PatchTarget"
     return $true
+}
+
+function Get-WebToken {
+    if (-not (Test-Path $DshLog)) { return '' }
+    try {
+        $fs = [System.IO.File]::Open($DshLog, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+        $sr = New-Object System.IO.StreamReader($fs)
+        $text = $sr.ReadToEnd()
+        $sr.Close(); $fs.Close()
+    } catch { return '' }
+    $m = [regex]::Match($text, 'token=([A-Za-z0-9_\-]+)')
+    if ($m.Success) { return $m.Groups[1].Value }
+    return ''
 }
 
 function Apply-ArchivePatch {
@@ -207,9 +226,19 @@ function Start-Dsh {
     $p2 = Start-Process -FilePath $Node -ArgumentList @($ProxyJs) -WorkingDirectory $DeployDir -WindowStyle Hidden -RedirectStandardOutput $ProxyOut -RedirectStandardError $ProxyErr -PassThru
     Set-Content -Path $ProxyPid -Value $p2.Id
 
+    # dsh 0.1.5+ prints a one-time auth URL (?token=...) to stdout. Surface it
+    # through the proxy so the browser can sign in from localhost or LAN.
+    $token = ''
+    for ($i = 0; $i -lt 10 -and -not $token; $i++) {
+        $token = Get-WebToken
+        if (-not $token) { Start-Sleep -Milliseconds 500 }
+    }
+    $suffix = if ($token) { "/?token=$token" } else { '/' }
+
     Write-Host ''
-    Write-Host "Local:    https://127.0.0.1:$ProxyPort   (accept the self-signed cert warning)"
-    if ($lan) { Write-Host "LAN:      https://$lan`:$ProxyPort" }
+    Write-Host "Local:    https://127.0.0.1:$ProxyPort$suffix   (accept the self-signed cert warning)"
+    if ($lan) { Write-Host "LAN:      https://$lan`:$ProxyPort$suffix" }
+    if ($token) { Write-Host '(open this URL once per start to sign in; the token rotates on restart)' }
     Write-Host ''
     Write-Host "Logs:     $LogDir"
 }
@@ -234,6 +263,8 @@ function Show-Status {
         $wss = [System.IO.File]::ReadAllText($wsFile, (New-Object System.Text.UTF8Encoding($false)))
         if ($wss.Contains($ArchiveMarker)) { Write-Host 'archive patch: applied' } else { Write-Host 'archive patch: NOT applied' }
     } else { Write-Host 'archive patch: dsh workspace not found' }
+    $token = Get-WebToken
+    if ($token) { Write-Host "web token: https://127.0.0.1:$ProxyPort/?token=$token" }
 }
 
 function Show-Log {
