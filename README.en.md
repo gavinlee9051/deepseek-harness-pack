@@ -20,7 +20,7 @@ This repository ships two platform variants with the same architecture and unloc
 
 - LAN accessible: HTTPS reverse proxy (self-signed cert, auto-reissued when your IP changes)
 - Full functionality over LAN: settings / agent presets / credentials usable from remote browsers (patched, reversible)
-- Session archive (archive / restore / delete sessions): applied automatically together with the unlock patch (`patches/archive-core-rc2.mjs`, from gavinlee9051/dsh-modern-skin)
+- Session archive (archive / restore / permanently delete sessions): applied automatically together with the unlock patch (`patches/`, chosen by dsh version, from gavinlee9051/dsh-modern-skin)
 - Unified management CLI: interactive menu + subcommands (start/stop/restart/status/log/upgrade)
 - Upgrade-proof: the patches re-apply automatically on every start after dsh upgrades (the archive patch skips with a note on unsupported versions)
 - Linux additionally: auto Node.js/nvm setup, desktop auto-start + optional systemd --user service
@@ -89,7 +89,7 @@ dsh-manage.cmd open          print the token login URL and open it in the browse
 | `upgrade.sh` | upgrade dsh, restart, re-apply patch |
 | `patch-lan.sh` | idempotent LAN-unlock patch |
 | `patch-archive.sh` | session-archive feature patch (idempotent, auto-applied) |
-| `patches/` | core patch definitions (`archive-core-rc2.mjs`, etc.) |
+| `patches/` | core patch definitions (`archive-core-rc2.mjs` / `archive-core-0.1.5.mjs`) |
 | `gen-cert.sh` | self-signed TLS cert create/renew |
 | `uninstall.sh` | stop service, remove auto-start registrations |
 
@@ -150,15 +150,17 @@ Deployment runs into three layers of dsh security mechanisms; this pack solves e
 This repo bundles the **archive-session** core feature (core only, no skin styling)
 from [dsh-modern-skin](https://github.com/gavinlee9051/dsh-modern-skin): the dsh
 sidebar gains an "Archived" section and sessions can be archived / restored /
-deleted. It is implemented as anchor replacements over compiled files of several
-dsh core packages (`patches/archive-core-rc2.mjs`). Linux applies it via
-`patch-archive.sh`, Windows via `win/dsh.ps1`, both idempotently on **every start**
-(re-applied automatically after upgrades).
+permanently deleted. It is implemented as anchor replacements over compiled files
+of several dsh core packages (`patches/`). Linux applies it via `patch-archive.sh`,
+Windows via `win/dsh.ps1`, both idempotently on **every start** (re-applied
+automatically after upgrades).
 
-- **Version pinning**: the patch is validated against `dsh 0.1.1-rc.2`;
-  `status` reports the "archive patch" state. If dsh is upgraded to another
-  version the start scripts **skip it with a note** (so incompatible code is
-  never half-edited) until the patch is updated for the new anchors.
+- **Version pinning**: the patch is chosen by dsh version — validated against
+  `0.1.1-rc.2` (`archive-core-rc2.mjs`) and `0.1.5-rc.1`
+  (`archive-core-0.1.5.mjs`; 0.1.5 already ships archive upstream, the patch adds
+  restore + delete). `status` reports the "archive patch" state; any other
+  version is **skipped with a note** (so incompatible code is never half-edited)
+  until the patch is updated for the new anchors.
 - **Revert**: `npm install -g @deepseek-ai/dsh` followed by a restart restores
   the official build.
 

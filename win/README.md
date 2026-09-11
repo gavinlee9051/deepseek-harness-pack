@@ -46,8 +46,8 @@ dsh-manage.cmd open          打印当前带 token 的登录地址并用默认�
 > 侧边栏会话菜单新增「归档会话」，归档后出现在「已归档」分区，可恢复或永久删除。
 > 该功能为合并自 [dsh-modern-skin](https://github.com/gavinlee9051/dsh-modern-skin) 的核心功能
 > （不含皮肤样式），由 `dsh.ps1` 启动时幂等应用。`status` 显示 `archive patch: applied`。
-> 若 `archive patch` 状态非 applied 或提示 skipped，说明 dsh 版本不是补丁验证过的
-> `0.1.1-rc.2`，等补丁更新后再自动生效。
+> 补丁按 dsh 版本选择，已验证 `0.1.1-rc.2` 与 `0.1.5-rc.1`；其它版本会提示 skipped，
+> 等补丁更新后再自动生效。
 
 PowerShell 直调：
 
@@ -69,9 +69,9 @@ powershell -ExecutionPolicy Bypass -File dsh.ps1 status
 | `proxy.js` | HTTPS 反向代理（0.0.0.0:3080 → 127.0.0.1:3081），改写 Host/Origin/Referer |
 | `uninstall.ps1` | 停止服务，可选卸载全局包 / 删除 ~/.dsh 数据 / 清理运行文件 |
 
-> `dsh.ps1` 会在部署目录 `patches\` 或仓库根 `patches\` 下查找归档补丁
-> `archive-core-rc2.mjs`。若你只拷贝本 `win` 目录单独使用，请把仓库根的
-> `patches\` 目录一并复制到 `dsh.ps1` 同级，否则启动会提示找不到补丁脚本
+> `dsh.ps1` 会在部署目录 `patches\` 或仓库根 `patches\` 下查找与 dsh 版本匹配的归档补丁
+> （`archive-core-rc2.mjs` / `archive-core-0.1.5.mjs`）。若你只拷贝本 `win` 目录单独使用，
+> 请把仓库根的 `patches\` 目录一并复制到 `dsh.ps1` 同级，否则启动会提示找不到补丁脚本
 > （不影响 dsh 与局域网功能）。
 
 运行期生成：`cert/`（证书）、`logs/`（日志）、`*.pid`（进程号）——已加入 `.gitignore`。

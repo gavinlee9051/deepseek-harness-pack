@@ -38,12 +38,17 @@ $ProxyJs = Join-Path $DeployDir 'proxy.js'
 # patch either beside this script (<deploy>/patches) or in the repo layout
 # (<repo-root>/patches) so both a standalone deploy and the win/ folder work.
 $ArchiveRoot = Join-Path $GlobalRoot '@deepseek-ai\dsh\node_modules\@deepseek-ai'
-$ArchiveMarker = 'Permanently delete one session'
-$ArchiveSupportedVersion = '0.1.1-rc.2'
-$ArchivePatchScript = @(
-        (Join-Path $DeployDir 'patches\archive-core-rc2.mjs'),
-        (Join-Path (Split-Path $DeployDir -Parent) 'patches\archive-core-rc2.mjs')
+$ArchiveMarker = 'deleteSession(sessionId) {'
+$ArchivePatchDir = @(
+        (Join-Path $DeployDir 'patches'),
+        (Join-Path (Split-Path $DeployDir -Parent) 'patches')
     ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+# Version-specific patches (anchors change per dsh release). Add an entry when
+# a new dsh version is validated; unsupported versions are skipped, not forced.
+$ArchiveVersions = @{
+    '0.1.1-rc.2' = @{ Patch = 'archive-core-rc2.mjs'; Marker = 'Permanently delete one session' }
+    '0.1.5-rc.1' = @{ Patch = 'archive-core-0.1.5.mjs'; Marker = 'deleteSession(sessionId) {' }
+}
 
 function Get-LanIp {
     try {
@@ -136,8 +141,19 @@ function Open-Web {
 }
 
 function Apply-ArchivePatch {
-    if (-not $ArchivePatchScript) {
-        Write-Host '[archive] patch script not found (expected patches\archive-core-rc2.mjs next to this script or in the repo root)'
+    $ver = ((& dsh --version 2>$null) | Out-String).Trim()
+    $entry = $ArchiveVersions[$ver]
+    if ($null -eq $entry) {
+        Write-Host "[archive] skipped: dsh '$ver' has no validated archive patch"
+        return $false
+    }
+    if (-not $ArchivePatchDir) {
+        Write-Host '[archive] patches folder not found (expected patches\ next to this script or in the repo root)'
+        return $false
+    }
+    $patchFile = Join-Path $ArchivePatchDir $entry.Patch
+    if (-not (Test-Path $patchFile)) {
+        Write-Host "[archive] patch file not found: $patchFile"
         return $false
     }
     $ws = Join-Path $ArchiveRoot 'dsh-workspace\lib\index.js'
@@ -146,18 +162,13 @@ function Apply-ArchivePatch {
         Write-Host '[archive] run the installer first (install.ps1)'
         return $false
     }
-    $ver = (& dsh --version 2>$null)
-    if (($ver | Out-String).Trim() -ne $ArchiveSupportedVersion) {
-        Write-Host "[archive] skipped: dsh '$((($ver | Out-String).Trim()))' does not match supported '$ArchiveSupportedVersion'"
-        return $false
-    }
     $utf8 = New-Object System.Text.UTF8Encoding($false)
-    if ([System.IO.File]::ReadAllText($ws, $utf8).Contains($ArchiveMarker)) {
+    if ([System.IO.File]::ReadAllText($ws, $utf8).Contains($entry.Marker)) {
         Write-Host '[archive] already applied'
         return $true
     }
-    Write-Host "[archive] applying archive session feature to dsh $($ArchiveSupportedVersion) ..."
-    & $Node $ArchivePatchScript --root $ArchiveRoot
+    Write-Host "[archive] applying archive session feature to dsh $ver ..."
+    & $Node $patchFile --root $ArchiveRoot
     $ok = ($LASTEXITCODE -eq 0)
     if ($ok) {
         Write-Host '[archive] applied'
