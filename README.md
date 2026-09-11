@@ -66,11 +66,12 @@ powershell -ExecutionPolicy Bypass -File install.ps1
 在 `win` 目录打开终端（PowerShell 或 cmd）：
 
 ```bat
-dsh-manage.cmd               交互式菜单（1启动 2停止 3重启 4状态 5日志 6升级）
+dsh-manage.cmd               交互式菜单（1启动 2停止 3重启 4状态 5日志 6升级 7打开网页）
 dsh-manage.cmd status        进程 / 地址 / 版本 / 补丁状态
 dsh-manage.cmd restart       重启
 dsh-manage.cmd upgrade       升级 dsh 并自动重启、重打补丁
 dsh-manage.cmd log           实时日志（Ctrl+C 退出）
+dsh-manage.cmd open          打印带 token 的登录地址并用浏览器打开
 ```
 
 ## 脚本说明

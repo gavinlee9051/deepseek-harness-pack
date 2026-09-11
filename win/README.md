@@ -33,13 +33,14 @@ powershell -ExecutionPolicy Bypass -File install.ps1
 在 `win` 目录打开终端：
 
 ```bat
-dsh-manage.cmd               交互式菜单（1启动 2停止 3重启 4状态 5日志 6升级）
+dsh-manage.cmd               交互式菜单（1启动 2停止 3重启 4状态 5日志 6升级 7打开网页）
 dsh-manage.cmd start         启动（自动打补丁、检查/重建证书）
 dsh-manage.cmd stop          停止
 dsh-manage.cmd restart       重启
 dsh-manage.cmd status        进程 / 地址 / 版本 / 补丁（局域网解锁 + 会话归档）状态
 dsh-manage.cmd log           实时日志（Ctrl+C 退出）
 dsh-manage.cmd upgrade       升级 dsh 并自动重启、重打补丁
+dsh-manage.cmd open          打印当前带 token 的登录地址并用默认浏览器打开
 ```
 
 > 侧边栏会话菜单新增「归档会话」，归档后出现在「已归档」分区，可恢复或永久删除。

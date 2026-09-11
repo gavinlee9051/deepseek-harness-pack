@@ -119,6 +119,22 @@ function Get-WebToken {
     return ''
 }
 
+function Get-WebTokenUrl {
+    $token = Get-WebToken
+    if (-not $token) { return '' }
+    return "https://127.0.0.1:$ProxyPort/?token=$token"
+}
+
+function Open-Web {
+    $url = Get-WebTokenUrl
+    if (-not $url) {
+        Write-Host 'No web token found. Start the service first (dsh-manage.cmd start), then retry.'
+        return
+    }
+    Write-Host "Web: $url"
+    Start-Process $url
+}
+
 function Apply-ArchivePatch {
     if (-not $ArchivePatchScript) {
         Write-Host '[archive] patch script not found (expected patches\archive-core-rc2.mjs next to this script or in the repo root)'
@@ -292,7 +308,7 @@ function Show-Menu {
         Write-Host '======== DeepSeek Harness management ========'
         Write-Host ' 1) start        2) stop        3) restart'
         Write-Host ' 4) status       5) log         6) upgrade'
-        Write-Host ' 0) exit'
+        Write-Host ' 7) open web     0) exit'
         $c = Read-Host 'choose'
         switch ($c) {
             '1' { Start-Dsh }
@@ -301,6 +317,7 @@ function Show-Menu {
             '4' { Show-Status }
             '5' { Show-Log }
             '6' { Do-Upgrade }
+            '7' { Open-Web }
             '0' { return }
             default { Write-Host 'invalid choice' }
         }
@@ -314,5 +331,6 @@ switch ($Command) {
     'status' { Show-Status }
     'log' { Show-Log }
     'upgrade' { Do-Upgrade }
+    'open' { Open-Web }
     default { Show-Menu }
 }

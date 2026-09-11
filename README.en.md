@@ -68,11 +68,12 @@ The first visit shows a certificate warning (self-signed); proceed past it. Then
 Open a terminal in the `win` folder:
 
 ```bat
-dsh-manage.cmd               interactive menu (1 start 2 stop 3 restart 4 status 5 log 6 upgrade)
+dsh-manage.cmd               interactive menu (1 start 2 stop 3 restart 4 status 5 log 6 upgrade 7 open web)
 dsh-manage.cmd status        processes / URLs / version / patch state
 dsh-manage.cmd restart       restart
 dsh-manage.cmd upgrade       upgrade dsh, restart, re-apply patch
 dsh-manage.cmd log           live logs (Ctrl+C to exit)
+dsh-manage.cmd open          print the token login URL and open it in the browser
 ```
 
 ## Scripts
